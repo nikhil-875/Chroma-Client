@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Database, Home, Search, Settings } from "lucide-react"
+import { Database, Home, Search, Settings, TestTube } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -29,6 +29,12 @@ export function Navbar() {
             <Link href="/search" className="flex items-center gap-1">
               <Search className="h-4 w-4" />
               <span className="hidden sm:inline">Search</span>
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/test-server" className="flex items-center gap-1">
+              <TestTube className="h-4 w-4" />
+              <span className="hidden sm:inline">Test</span>
             </Link>
           </Button>
           <Button asChild variant="ghost" size="sm">

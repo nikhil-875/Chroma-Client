@@ -57,17 +57,34 @@ export async function getCollections(): Promise<Collection[]> {
  * Create a new collection
  */
 export async function createCollection(name: string, metadata: Record<string, any> = {}): Promise<void> {
-  const response = await fetch('/api/collections', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ name, metadata }),
-  });
-  
-  if (!response.ok) {
+  try {
+    console.log(`Client API: Creating collection "${name}" with metadata:`, metadata);
+    
+    const response = await fetch('/api/collections', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, metadata }),
+    });
+    
     const data = await response.json();
-    throw new Error(data.error || 'Failed to create collection');
+    
+    if (!response.ok) {
+      console.error(`Client API: Collection creation failed with status ${response.status}:`, data);
+      throw new Error(data.error || `Failed to create collection (${response.status})`);
+    }
+    
+    console.log(`Client API: Collection "${name}" created successfully`);
+  } catch (error) {
+    console.error('Client API: Error in createCollection:', error);
+    
+    // Re-throw with more context if it's a network error
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your connection.');
+    }
+    
+    throw error;
   }
 }
 

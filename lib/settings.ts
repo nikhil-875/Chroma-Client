@@ -6,7 +6,7 @@ export interface Settings {
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  chromaUrl: "http://localhost:8000"
+  chromaUrl: "https://chromadb.estatemanager.online"
 };
 
 /**
@@ -15,16 +15,18 @@ const DEFAULT_SETTINGS: Settings = {
 export async function getSettings(): Promise<Settings> {
   if (typeof window === "undefined") {
     // Server-side: return defaults or environment variables
+    const chromaUrl = process.env.CHROMA_URL || DEFAULT_SETTINGS.chromaUrl;
+    console.log(`Server-side settings: Using ChromaDB URL: ${chromaUrl}`);
     return {
-      chromaUrl: process.env.CHROMA_URL || DEFAULT_SETTINGS.chromaUrl,
+      chromaUrl,
     };
   }
 
   // Client-side: get from localStorage
   const settings = localStorage.getItem("chroma-settings");
-  return settings
-    ? JSON.parse(settings)
-    : DEFAULT_SETTINGS;
+  const parsedSettings = settings ? JSON.parse(settings) : DEFAULT_SETTINGS;
+  console.log(`Client-side settings: Using ChromaDB URL: ${parsedSettings.chromaUrl}`);
+  return parsedSettings;
 }
 
 /**
@@ -33,6 +35,7 @@ export async function getSettings(): Promise<Settings> {
 export async function updateSettings(settings: Settings): Promise<void> {
   if (typeof window === "undefined") return;
 
+  console.log(`Updating settings with ChromaDB URL: ${settings.chromaUrl}`);
   localStorage.setItem("chroma-settings", JSON.stringify(settings));
 }
 

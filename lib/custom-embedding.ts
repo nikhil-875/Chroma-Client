@@ -26,6 +26,8 @@ export class CustomServerEmbeddingFunction implements IEmbeddingFunction {
         return [];
       }
 
+      console.log(`Generating embeddings for ${texts.length} texts`);
+
       // Different fetch approach based on environment
       let response;
       
@@ -35,6 +37,8 @@ export class CustomServerEmbeddingFunction implements IEmbeddingFunction {
           // If it's a relative URL and we're on the server, we need to prepend the host
           const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
           const url = `${baseUrl}${this.apiUrl}`;
+          
+          console.log(`Server-side embedding request to: ${url}`);
           
           // Use node-fetch (already available in Next.js)
           response = await fetch(url, {
@@ -46,6 +50,7 @@ export class CustomServerEmbeddingFunction implements IEmbeddingFunction {
           });
         } else {
           // Absolute URL
+          console.log(`Server-side embedding request to: ${this.apiUrl}`);
           response = await fetch(this.apiUrl, {
             method: 'POST',
             headers: {
@@ -56,6 +61,7 @@ export class CustomServerEmbeddingFunction implements IEmbeddingFunction {
         }
       } else {
         // Client-side: use browser fetch
+        console.log(`Client-side embedding request to: ${this.apiUrl}`);
         response = await fetch(this.apiUrl, {
           method: 'POST',
           headers: {
@@ -67,14 +73,25 @@ export class CustomServerEmbeddingFunction implements IEmbeddingFunction {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API error: ${errorData.error || response.statusText}`);
+        const errorMessage = errorData.error || response.statusText;
+        console.error(`Embedding API error: ${response.status} - ${errorMessage}`);
+        throw new Error(`API error: ${errorMessage}`);
       }
 
       const data = await response.json();
+      
+      if (!data.embeddings || !Array.isArray(data.embeddings)) {
+        throw new Error('Invalid response format from embedding API');
+      }
+      
+      console.log(`Successfully generated ${data.embeddings.length} embeddings`);
       return data.embeddings;
     } catch (error) {
       console.error('Error generating embeddings:', error);
-      throw error;
+      
+      // If embedding generation fails, we can't create the collection
+      // This is a critical error that should prevent collection creation
+      throw new Error(`Failed to generate embeddings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 } 

@@ -1,159 +1,174 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
-import { getCollections, createCollection, search } from "@/lib/client-api";
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, CheckCircle, XCircle, Info } from "lucide-react"
+
+interface TestResult {
+  success: boolean
+  chromaUrl?: string
+  heartbeat?: any
+  collections?: number
+  message?: string
+  error?: string
+  stack?: string
+}
 
 export default function TestServerPage() {
-  const [collections, setCollections] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [newCollection, setNewCollection] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  
-  const fetchCollections = async () => {
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<TestResult | null>(null)
+
+  const testConnection = async () => {
+    setLoading(true)
+    setResult(null)
+
     try {
-      setLoading(true);
-      setError("");
-      const result = await getCollections();
-      setCollections(result.map(c => c.name));
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch collections");
-      console.error(err);
+      const response = await fetch('/api/test-server')
+      const data = await response.json()
+      setResult(data)
+    } catch (error: any) {
+      setResult({
+        success: false,
+        error: error.message,
+        message: "Failed to test connection"
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-  
-  const handleCreateCollection = async () => {
-    if (!newCollection.trim()) return;
-    
-    try {
-      setLoading(true);
-      setError("");
-      await createCollection(newCollection);
-      setNewCollection("");
-      await fetchCollections();
-    } catch (err: any) {
-      setError(err.message || "Failed to create collection");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleSearch = async () => {
-    if (!searchQuery.trim() || collections.length === 0) return;
-    
-    try {
-      setLoading(true);
-      setError("");
-      const results = await search(searchQuery, collections);
-      setSearchResults(results);
-    } catch (err: any) {
-      setError(err.message || "Failed to search");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
+  }
+
   return (
-    <div className="container py-10">
-      <h1 className="text-3xl font-bold mb-8 text-center">Test Server-Side ChromaDB</h1>
-      
-      <div className="grid gap-8 md:grid-cols-2">
+    <div className="container mx-auto py-10 max-w-4xl">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">ChromaDB Connection Test</h1>
+        <p className="text-muted-foreground">
+          Test the connection to your ChromaDB server to diagnose any issues.
+        </p>
+      </div>
+
+      <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Collections</CardTitle>
-            <CardDescription>Manage your collections</CardDescription>
+            <CardTitle>Connection Test</CardTitle>
+            <CardDescription>
+              Click the button below to test the connection to your ChromaDB server.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Button onClick={fetchCollections} disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Fetch Collections
-              </Button>
-            </div>
-            
-            {collections.length > 0 && (
-              <div>
-                <h3 className="font-medium mb-2">Available Collections:</h3>
-                <ul className="list-disc pl-5 space-y-1">
-                  {collections.map(name => (
-                    <li key={name}>{name}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            
-            <div className="pt-4 border-t mt-4">
-              <h3 className="font-medium mb-2">Create New Collection:</h3>
-              <div className="flex gap-2">
-                <Input 
-                  value={newCollection}
-                  onChange={(e) => setNewCollection(e.target.value)}
-                  placeholder="Collection name"
-                />
-                <Button onClick={handleCreateCollection} disabled={loading || !newCollection.trim()}>
-                  Create
-                </Button>
-              </div>
-            </div>
+          <CardContent>
+            <Button 
+              onClick={testConnection} 
+              disabled={loading}
+              className="w-full sm:w-auto"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Testing Connection...
+                </>
+              ) : (
+                "Test Connection"
+              )}
+            </Button>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Search</CardTitle>
-            <CardDescription>Search across all collections</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search query"
-              />
-              <Button 
-                onClick={handleSearch} 
-                disabled={loading || !searchQuery.trim() || collections.length === 0}
-              >
-                Search
-              </Button>
-            </div>
-            
-            {searchResults.length > 0 && (
-              <div>
-                <h3 className="font-medium mb-2">Search Results:</h3>
+
+        {result && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {result.success ? (
+                  <>
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    Connection Successful
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-5 w-5 text-red-500" />
+                    Connection Failed
+                  </>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {result.message}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {result.chromaUrl && (
+                <div>
+                  <strong>ChromaDB URL:</strong> {result.chromaUrl}
+                </div>
+              )}
+              
+              {result.success && (
                 <div className="space-y-2">
-                  {searchResults.map((result, i) => (
-                    <div key={i} className="border rounded p-3 text-sm">
-                      <div className="font-mono text-xs text-muted-foreground">ID: {result.id}</div>
-                      <div className="mt-1">{result.document}</div>
-                      {result.collection && (
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Collection: {result.collection}
-                        </div>
+                  <div>
+                    <strong>Heartbeat Response:</strong>
+                    <pre className="mt-1 p-2 bg-muted rounded text-sm overflow-x-auto">
+                      {JSON.stringify(result.heartbeat, null, 2)}
+                    </pre>
+                  </div>
+                  <div>
+                    <strong>Collections Count:</strong> {result.collections}
+                  </div>
+                </div>
+              )}
+              
+              {result.error && (
+                <Alert variant="destructive">
+                  <XCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      <div><strong>Error:</strong> {result.error}</div>
+                      {result.stack && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-sm">Show Stack Trace</summary>
+                          <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto">
+                            {result.stack}
+                          </pre>
+                        </details>
                       )}
                     </div>
-                  ))}
-                </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-blue-500" />
+              Troubleshooting Tips
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <h4 className="font-semibold">If the connection fails:</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <li>Check if your ChromaDB server is running</li>
+                <li>Verify the ChromaDB URL in your settings</li>
+                <li>Ensure the server is accessible from your network</li>
+                <li>Check for any firewall or CORS issues</li>
+                <li>Verify that the ChromaDB version is compatible</li>
+              </ul>
+            </div>
+            
+            <div className="space-y-2">
+              <h4 className="font-semibold">Common Issues:</h4>
+              <div className="space-y-1">
+                <Badge variant="outline" className="text-xs">CORS errors</Badge>
+                <Badge variant="outline" className="text-xs">Network timeout</Badge>
+                <Badge variant="outline" className="text-xs">Authentication required</Badge>
+                <Badge variant="outline" className="text-xs">Invalid URL format</Badge>
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
       </div>
-      
-      {error && (
-        <div className="mt-6 p-4 bg-destructive/10 border border-destructive text-destructive rounded-md">
-          {error}
-        </div>
-      )}
     </div>
-  );
+  )
 } 
